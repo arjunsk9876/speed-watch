@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['car']
+
+roboflow:
+  workspace: team-bpssj
+  project: race-car-detection-vjr5g
+  version: 3
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/team-bpssj/race-car-detection-vjr5g/dataset/3
