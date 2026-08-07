@@ -1,6 +1,7 @@
 videos/*.mp4
 data/*.zip
-models/*.pt
+*.pt
 models/finetune/
+*.cache
 __pycache__/
 *.pyc
