@@ -1,17 +1,18 @@
+import av
 import cv2
 
 
-def read_video(video_path):
-    """Read every frame of a video into memory as a list of BGR numpy arrays."""
+def iter_frames(video_path):
+    """Stream a video one BGR frame at a time (does not load the whole clip into memory)."""
     cap = cv2.VideoCapture(str(video_path))
-    frames = []
-    while True:
-        ok, frame = cap.read()
-        if not ok:
-            break
-        frames.append(frame)
-    cap.release()
-    return frames
+    try:
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            yield frame
+    finally:
+        cap.release()
 
 
 def sample_frames(video_path, n=6):
@@ -29,16 +30,38 @@ def sample_frames(video_path, n=6):
     return frames
 
 
-def save_video(frames, output_path, fps=30):
-    """Write a list of BGR frames out to an mp4 file."""
-    if not frames:
-        raise ValueError("no frames to write")
-    height, width = frames[0].shape[:2]
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
-    for frame in frames:
-        writer.write(frame)
-    writer.release()
+class VideoWriter:
+    """Incremental H.264 mp4 writer so annotated frames can be written as they're produced.
+
+    Uses PyAV/libx264 rather than cv2's default `mp4v` fourcc, which produces
+    files roughly 5x larger for the same content (e.g. 120MB vs 25MB for a
+    23-minute 640x360 clip) and can exceed GitHub's 100MB file limit.
+    """
+
+    def __init__(self, output_path, fps, frame_size, crf=30):
+        width, height = frame_size
+        self._container = av.open(str(output_path), mode="w")
+        self._stream = self._container.add_stream("h264", rate=int(round(fps)))
+        self._stream.width = width
+        self._stream.height = height
+        self._stream.pix_fmt = "yuv420p"
+        self._stream.options = {"crf": str(crf), "preset": "medium"}
+
+    def write(self, frame):
+        video_frame = av.VideoFrame.from_ndarray(frame, format="bgr24")
+        for packet in self._stream.encode(video_frame):
+            self._container.mux(packet)
+
+    def release(self):
+        for packet in self._stream.encode():
+            self._container.mux(packet)
+        self._container.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.release()
 
 
 def get_fps(video_path):
@@ -46,3 +69,12 @@ def get_fps(video_path):
     fps = cap.get(cv2.CAP_PROP_FPS)
     cap.release()
     return fps
+
+
+def get_frame_size(video_path):
+    """Returns (width, height)."""
+    cap = cv2.VideoCapture(str(video_path))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cap.release()
+    return width, height

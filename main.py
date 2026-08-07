@@ -2,7 +2,16 @@ import argparse
 from pathlib import Path
 
 import config as cfg
-from pipeline import CarDetector, CarTracker, TrackingLogger, annotate_frame, read_video, save_video
+from pipeline import (
+    CarDetector,
+    CarTracker,
+    TrackingLogger,
+    VideoWriter,
+    annotate_frame,
+    get_fps,
+    get_frame_size,
+    iter_frames,
+)
 
 
 def run(video_path, weights=None, output_name=None):
@@ -14,14 +23,6 @@ def run(video_path, weights=None, output_name=None):
     tracker = CarTracker()
     logger = TrackingLogger()
 
-    frames = read_video(video_path)
-    annotated_frames = []
-    for i, frame in enumerate(frames):
-        detections = detector.predict(frame)
-        detections = tracker.update(detections)
-        logger.log(i, detections)
-        annotated_frames.append(annotate_frame(frame, detections))
-
     cfg.OUTPUT_VIDEOS_DIR.mkdir(exist_ok=True)
     stem = Path(video_path).stem
     output_name = output_name or f"{stem}_tracked.mp4"
@@ -29,7 +30,16 @@ def run(video_path, weights=None, output_name=None):
     video_out_path = cfg.OUTPUT_VIDEOS_DIR / output_name
     csv_out_path = cfg.OUTPUT_VIDEOS_DIR / f"{stem}_tracking_log.csv"
 
-    save_video(annotated_frames, video_out_path)
+    fps = get_fps(video_path)
+    frame_size = get_frame_size(video_path)
+
+    with VideoWriter(video_out_path, fps, frame_size) as writer:
+        for i, frame in enumerate(iter_frames(video_path)):
+            detections = detector.predict(frame)
+            detections = tracker.update(detections)
+            logger.log(i, detections)
+            writer.write(annotate_frame(frame, detections))
+
     logger.write_csv(csv_out_path)
 
     print(f"Annotated video: {video_out_path}")

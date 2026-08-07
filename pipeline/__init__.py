@@ -1,14 +1,16 @@
 from .detector import CarDetector
 from .tracker import CarTracker
-from .video_io import read_video, sample_frames, save_video
+from .video_io import VideoWriter, get_fps, get_frame_size, iter_frames, sample_frames
 from .annotation import TrackingLogger, annotate_frame
 
 __all__ = [
     "CarDetector",
     "CarTracker",
-    "read_video",
+    "VideoWriter",
+    "get_fps",
+    "get_frame_size",
+    "iter_frames",
     "sample_frames",
-    "save_video",
     "TrackingLogger",
     "annotate_frame",
 ]
