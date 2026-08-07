@@ -30,7 +30,7 @@ class CarDetector:
         return sv.Detections.from_ultralytics(result)
 
     @staticmethod
-    def train(data_yaml, epochs=50, imgsz=640, project="models", name="finetune", base_weights="yolov8n.pt"):
+    def train(data_yaml, epochs=50, imgsz=640, project="models", name="finetune", base_weights="yolov8n.pt", device=None):
         """Fine-tune a pretrained YOLOv8 checkpoint on a Roboflow-format dataset."""
         model = YOLO(base_weights)
-        return model.train(data=data_yaml, epochs=epochs, imgsz=imgsz, project=project, name=name)
+        return model.train(data=data_yaml, epochs=epochs, imgsz=imgsz, project=project, name=name, device=device)
